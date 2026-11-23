@@ -4,7 +4,7 @@
 
 Built by **Team Loreal** for **wHACKiest 2026** (Ramaiah Institute of Technology), Track 1: *Make MCP Matter: Less Magic, More Utility*.
 
-> Status: idea stage. This repository has no code yet.
+> Status: working MVP. Web/phone app, MCP server for Claude Desktop, and AI document reading.
 
 ---
 
@@ -77,8 +77,9 @@ HomeDesk is an MCP (Model Context Protocol) server. It works as a back office fo
 | Integrations | Gmail and Google Calendar |
 | Browser agent | Playwright |
 | Database | SQLite + local file store |
-| Background jobs | Python, APScheduler |
-| Frontend | Next.js approval dashboard |
+| Web / API | FastAPI (Python) |
+| Background jobs | Due dates checked on every request in the MVP; APScheduler daily digest planned |
+| Frontend | Installable web app (PWA) for phone and desktop; the MVP uses plain HTML/JS served by FastAPI |
 
 ## Principles
 
@@ -86,9 +87,56 @@ HomeDesk is an MCP (Model Context Protocol) server. It works as a back office fo
 - **Local-first:** documents stay on your machine, and only the text a task needs is sent to the model.
 - **Built on an open standard:** works with any MCP client.
 
+## Run the MVP
+
+Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync                       # install dependencies
+uv run homedesk-seed          # optional: load demo data (dates relative to today)
+uv run homedesk-web           # open http://127.0.0.1:8000
+```
+
+**AI reading.** Set `ANTHROPIC_API_KEY` to have Claude read photos, PDFs and pasted emails and write the complaint emails. Without a key, HomeDesk still works: pasted text is read with simple rules, files are stored, and you fill in or correct the details in the app. Optional settings: `HOMEDESK_MODEL` (default `claude-opus-5-5`), `HOMEDESK_AI=off`, `HOMEDESK_DATA` (where the database and files are kept, default `./data`).
+
+**On your phone.** Run with `HOMEDESK_HOST=0.0.0.0 uv run homedesk-web`, open `http://<your-laptop-ip>:8000` on a phone on the same Wi-Fi, and use the browser's *Add to Home Screen*. The MVP has no login, so only do this on a network you trust.
+
+**In Claude Desktop.** Add HomeDesk as an MCP server in `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "homedesk": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/HomeDesk", "homedesk-mcp"],
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+Then ask things like *"What's due this month?"*, *"File ~/Downloads/ac-invoice.pdf"* or *"My AC stopped cooling, start a complaint."* The MCP tools can draft emails but cannot send them; you approve every draft in the app.
+
+**Tests.** `uv run pytest`
+
+### What the MVP does
+
+| Feature | MVP |
+|---|---|
+| Add documents | Photo (phone camera), PDF, or pasted email text; Claude extracts the fields; you review and edit |
+| Document vault | Search with everyday words ("fridge", "power bill"), timeline per document, original file kept |
+| Warranty tracker | Warranty end date worked out from purchase date and length; shown before it runs out |
+| Bill watcher | Flags a bill 30% or more above the average of earlier bills of the same kind |
+| Complaint chaser | Drafts the email, checks the warranty, waits for your approval, opens it in your mail app, reminds you after 7 days, drafts an escalation |
+| Reminders | *What needs attention* list, and a calendar file (`.ics`) with every expiry date |
+| MCP server | `whats_due`, `add_document_file`, `add_document_text`, `find_document`, `document_timeline`, `open_case`, `list_cases`, `escalate_case` |
+
+Not in the MVP yet: reading Gmail directly, sending email without your mail app, Google Calendar sync and a login.
+
 ## Roadmap
 
-- [ ] MVP: ingest from Gmail, photos and PDFs; the four modules on one SQLite store; `whats_due` digest; complaint drafting with approval
+- [x] MVP: photos, PDFs and pasted emails; the four modules on one SQLite store; `whats_due` digest; complaint drafting with approval
+- [ ] Gmail and Google Calendar integration; sending approved emails directly
 - [ ] Browser agent for complaint portals that have no API
 - [ ] Hardware add-ons: ESP32 + current sensor for appliance health, NFC tags on appliances
 - [ ] More modules: pantry and medicine tracking

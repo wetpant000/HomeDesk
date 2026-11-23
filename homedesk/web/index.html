@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1B1F6B">
+  <title>HomeDesk</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="/icon.svg" alt="" width="32" height="32"><span>HomeDesk</span></div>
+    <span id="ai-status" class="pill">…</span>
+  </header>
+
+  <main>
+    <!-- TODAY -->
+    <section id="tab-due" class="tab">
+      <div class="section-head">
+        <h1>What needs attention</h1>
+        <a class="link" href="/api/calendar.ics" download>Add dates to calendar</a>
+      </div>
+      <div id="due-list" class="list"></div>
+    </section>
+
+    <!-- ADD -->
+    <section id="tab-add" class="tab" hidden>
+      <h1>Add a document</h1>
+      <p class="muted">Snap a bill, invoice, receipt, warranty card or ID proof, or paste the text of an email.</p>
+      <form id="add-form" class="card">
+        <label class="drop">
+          <input id="add-file" name="file" type="file" accept="image/*,application/pdf" capture="environment">
+          <span id="add-file-label">Take a photo or choose a file</span>
+        </label>
+        <label>Or paste email / bill text
+          <textarea name="text" rows="5" placeholder="Paste an order confirmation or bill email…"></textarea>
+        </label>
+        <button class="primary" type="submit">File it</button>
+      </form>
+      <div id="add-result"></div>
+    </section>
+
+    <!-- VAULT -->
+    <section id="tab-vault" class="tab" hidden>
+      <h1>Document vault</h1>
+      <input id="vault-search" type="search" placeholder="Search: AC invoice, passport, electricity…">
+      <div id="vault-list" class="list"></div>
+    </section>
+
+    <!-- CASES -->
+    <section id="tab-cases" class="tab" hidden>
+      <h1>Complaints</h1>
+      <div id="cases-list" class="list"></div>
+    </section>
+
+    <!-- DETAIL (timeline) -->
+    <section id="tab-detail" class="tab" hidden>
+      <button class="link back" data-go="vault">← Back</button>
+      <div id="detail"></div>
+    </section>
+  </main>
+
+  <nav class="bottom">
+    <button data-tab="due" class="active"><span>⏰</span>Today</button>
+    <button data-tab="add"><span>＋</span>Add</button>
+    <button data-tab="vault"><span>🗂</span>Vault</button>
+    <button data-tab="cases"><span>✉</span>Cases</button>
+  </nav>
+
+  <div id="toast" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

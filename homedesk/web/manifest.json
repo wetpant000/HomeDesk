@@ -1,0 +1,14 @@
+{
+  "name": "HomeDesk",
+  "short_name": "HomeDesk",
+  "description": "Files household paperwork, tracks every date and chases issues until they're resolved.",
+  "start_url": "/#due",
+  "display": "standalone",
+  "background_color": "#F8F2E4",
+  "theme_color": "#1B1F6B",
+  "icons": [
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}
