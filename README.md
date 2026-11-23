@@ -87,6 +87,17 @@ HomeDesk is an MCP (Model Context Protocol) server. It works as a back office fo
 - **Local-first:** documents stay on your machine, and only the text a task needs is sent to the model.
 - **Built on an open standard:** works with any MCP client.
 
+## Screenshots
+
+On a phone, in dark and light themes (Today, Add, Vault, Cases, Guide):
+
+![HomeDesk on a phone, dark theme](docs/screenshots/phone-all-dark.png)
+![HomeDesk on a phone, light theme](docs/screenshots/phone-all-light.png)
+
+On desktop: [Today, dark](docs/screenshots/desktop-due-dark.png) · [Today, light](docs/screenshots/desktop-due-light.png) · [Guide, dark](docs/screenshots/desktop-guide-dark.png) · [Guide, light](docs/screenshots/desktop-guide-light.png)
+
+The app follows the device's dark or light setting until you pick one with the toggle at the top, and has a built-in **Guide** tab for first-time users.
+
 ## Run the MVP
 
 Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).

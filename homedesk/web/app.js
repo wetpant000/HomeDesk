@@ -18,6 +18,9 @@ const postJSON = (path, data, method = "POST") =>
 
 function toast(msg) {
   const t = $("#toast");
+  // Modal dialogs sit in the top layer, so show the toast inside the open one.
+  const host = document.querySelector("dialog[open]") || document.body;
+  if (t.parentElement !== host) host.appendChild(t);
   t.textContent = msg; t.hidden = false;
   clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 3500);
 }
@@ -28,7 +31,7 @@ async function busy(btn, fn) {
 }
 
 // ---------- navigation ----------
-const LOADERS = { due: loadDue, vault: loadVault, cases: loadCases, add: () => {} };
+const LOADERS = { due: loadDue, vault: loadVault, cases: loadCases, add: () => {}, guide: () => {} };
 function show(tab) {
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + tab));
   document.querySelectorAll("nav.bottom button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -48,6 +51,7 @@ async function loadDue() {
     <div class="card">
       <div class="row"><h2>${esc(i.title)}</h2><span class="badge ${i.urgency}">${esc(i.urgency)}</span></div>
       <div class="meta">${esc(i.detail)}</div>
+      <div class="divider"></div>
       <div class="actions">
         ${i.document_id ? `<button data-open-doc="${i.document_id}">View</button>` : ""}
         ${i.type === "expiry" && ["invoice", "warranty"].includes(i.kind) ? `<button class="dark" data-report="${i.document_id}">Report a problem</button>` : ""}
@@ -61,16 +65,46 @@ document.addEventListener("click", async (e) => {
   const open = e.target.closest("[data-open-doc]");
   if (open) return openDetail(open.dataset.openDoc);
   const report = e.target.closest("[data-report]");
-  if (report) {
-    const issue = prompt("What's wrong? (e.g. The AC stopped cooling)");
-    if (issue) busy(report, async () => { await postJSON("/cases", { issue, document_id: Number(report.dataset.report) }); toast("Draft ready for your approval"); show("cases"); });
-  }
+  if (report) return openReport(report.dataset.report, "", "Report a problem");
   const dispute = e.target.closest("[data-dispute]");
-  if (dispute) {
-    const issue = prompt("Describe the problem with this bill", "This bill is much higher than my usual usage. Please check the meter reading and correct the bill.");
-    if (issue) busy(dispute, async () => { await postJSON("/cases", { issue, document_id: Number(dispute.dataset.dispute) }); toast("Draft ready for your approval"); show("cases"); });
-  }
+  if (dispute) return openReport(dispute.dataset.dispute,
+    "This bill is much higher than my usual usage. Please check the meter reading and correct the bill.", "Dispute this bill");
 });
+
+// ---------- report-a-problem dialog ----------
+function openReport(docId, preset, title) {
+  const d = $("#report-dialog");
+  d.dataset.doc = docId;
+  $("#report-title").textContent = title;
+  $("#report-issue").value = preset;
+  d.showModal();
+  $("#report-issue").focus();
+}
+$("#report-cancel").addEventListener("click", () => $("#report-dialog").close());
+$("#report-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const d = $("#report-dialog");
+  const issue = $("#report-issue").value.trim();
+  if (!issue) { toast("Describe the problem first"); return; }
+  busy($("#report-submit"), async () => {
+    await postJSON("/cases", { issue, document_id: Number(d.dataset.doc) });
+    d.close();
+    toast("Draft ready for your approval");
+    show("cases");
+  });
+});
+
+// ---------- voice (interface only; not connected yet) ----------
+// Turn on once speech input and output are wired up. Until then every voice control says "coming soon".
+const VOICE = { enabled: false };
+document.addEventListener("click", (e) => {
+  const v = e.target.closest("[data-voice]");
+  if (!v) return;
+  e.preventDefault();
+  if (v.dataset.voice === "assistant") { $("#voice-dialog").showModal(); return; }
+  if (!VOICE.enabled) toast("Voice is coming soon");
+});
+$("#voice-close").addEventListener("click", () => $("#voice-dialog").close());
 
 // ---------- add ----------
 $("#add-file").addEventListener("change", (e) => {
@@ -151,7 +185,7 @@ async function openDetail(id) {
   const d = t.document;
   $("#detail").innerHTML = `
     <div class="card">
-      <div class="row"><h1>${esc(d.title)}</h1><span class="badge neutral">${KIND_LABEL[d.kind] || d.kind}</span></div>
+      <div class="row"><h1 style="font-size:32px;margin:0">${esc(d.title)}</h1><span class="badge neutral">${KIND_LABEL[d.kind] || d.kind}</span></div>
       <div class="meta">${[d.vendor, d.item_name, money(d.amount), d.doc_date].filter(Boolean).map(esc).join(" · ")}</div>
       ${t.warranty ? `<div class="flag">${esc(t.warranty)}</div>` : ""}
       ${d.anomaly ? `<div class="flag">⚠ ${esc(d.anomaly.message)}</div>` : ""}
@@ -161,7 +195,7 @@ async function openDetail(id) {
         <button class="dark" data-report="${d.id}">Report a problem</button>
         <button data-edit="${d.id}">Edit details</button>
       </div>
-      <h2>Timeline</h2>
+      <div class="divider"></div><h2>Timeline</h2>
       <ul class="events">${t.events.map((e) => `<li><time>${esc(String(e.at).slice(0, 10))}</time>${esc(e.kind.replace(/_/g, " "))}${e.note ? " – " + esc(e.note) : ""}</li>`).join("")}</ul>
     </div>`;
   $("#detail [data-edit]").addEventListener("click", () => { show("add"); renderReview({ document: d, used_ai: !d.needs_review, warning: null }); });
@@ -179,7 +213,7 @@ async function loadCases() {
     const overdue = c.status === "sent" && c.follow_up_on && c.follow_up_on <= new Date().toISOString().slice(0, 10);
     return `
     <div class="card" data-case="${c.id}">
-      <div class="row"><h2>${esc(c.issue)}</h2><span class="badge ${badge}">${STATUS_LABEL[c.status]}</span></div>
+      <div class="row"><h2 class="case-issue">${esc(c.issue)}</h2><span class="badge ${badge}">${STATUS_LABEL[c.status]}</span></div>
       ${c.escalation_level ? `<div class="meta">Escalation level ${c.escalation_level}</div>` : ""}
       ${c.status === "awaiting_approval" ? `
         <label>To<input name="to_email" type="email" value="${esc(c.to_email)}" placeholder="support@company.com"></label>
@@ -213,7 +247,24 @@ $("#cases-list").addEventListener("click", (e) => {
   if (res) return busy(res, async () => { await postJSON(`/cases/${res.dataset.resolve}/resolve`, {}); toast("Marked resolved"); loadCases(); });
 });
 
+// ---------- theme ----------
+function applyTheme(theme, save) {
+  document.documentElement.dataset.theme = theme;
+  $("#theme-toggle").textContent = theme === "dark" ? "Light" : "Dark";
+  $("#theme-toggle").setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} theme`);
+  $('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#100904" : "#fbf3e8");
+  if (save) { try { localStorage.setItem("hd-theme", theme); } catch (e) {} }
+}
+applyTheme(document.documentElement.dataset.theme || "dark", false);
+$("#theme-toggle").addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true));
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", (e) => {
+  let saved = null; try { saved = localStorage.getItem("hd-theme"); } catch (err) {}
+  if (!saved) applyTheme(e.matches ? "light" : "dark", false);
+});
+
 // ---------- start ----------
-api("/status").then((s) => { $("#ai-status").textContent = s.ai ? "AI reading on" : "AI reading off"; }).catch(() => {});
+api("/status").then((s) => { const p = $("#ai-status"); p.textContent = s.ai ? "AI reading on" : "AI reading off"; p.classList.toggle("on", s.ai); }).catch(() => {});
+$("#today-date").textContent = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
 show((location.hash || "#due").slice(1) in LOADERS ? (location.hash || "#due").slice(1) : "due");
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
